@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Emoji Day Planner</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Styles -->
+    <style>
+        /* Global Styles */
+        body {
+            margin: 0;
+            font-family: 'Comic Sans MS', 'Arial', sans-serif;
+            transition: background-color 0.3s, color 0.3s;
+            background-color: #ffffff;
+            color: #000000;
+            overflow: hidden; /* Prevents extra scrollbars */
+        }
+        .dark-mode {
+            background-color: #121212;
+            color: #ffffff;
+        }
+        /* Header */
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: #fff;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Center the header content */
+            padding: 10px 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .dark-mode .header {
+            background-color: #1e1e1e;
+        }
+        /* Clock Display */
+        .clock-display {
+            position: absolute;
+            left: 20px;
+            display: flex;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .clock-icon {
+            margin-right: 8px;
+            font-size: 28px;
+        }
+        /* Sticky Button */
+        .sticky-button {
+            background-color: #007bff;
+            color: #fff;
+            border: 6px solid #ffd700; /* Yellow border */
+            border-radius: 12px;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.3);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .sticky-button:hover {
+            background-color: #0056b3;
+        }
+        .dark-mode .sticky-button {
+            background-color: #0056b3;
+        }
+        /* Theme Toggle */
+        .theme-toggle {
+            position: absolute;
+            right: 20px;
+            cursor: pointer;
+            background-color: transparent;
+            border: none;
+            font-size: 28px;
+            outline: none;
+            z-index: 1001;
+        }
+        /* Planner Grid */
+        .planner {
+            position: absolute;
+            top: 70px; /* Adjusted for header height */
+            bottom: 0;
+            left: 0;
+            right: 0;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-auto-rows: 80px;
+            padding-bottom: 100px; /* Space for buttons */
+        }
+        .time-slot {
+            border-bottom: 1px solid #ccc;
+            position: relative;
+            padding-left: 60px;
+            box-sizing: border-box;
+            background: linear-gradient(135deg, #6baed6, #4292c6); /* Pastel blue gradient */
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+            background-size: cover;
+        }
+        .dark-mode .time-slot {
+            background: linear-gradient(135deg, #4a89ac, #346b91);
+        }
+        .time-label {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            font-weight: bold;
+            color: #ffffff;
+        }
+        .emoji-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            margin-left: -5px;
+        }
+        .emoji {
+            font-size: 32px;
+            cursor: move;
+            margin: 5px;
+            transition: transform 0.2s;
+            touch-action: none; /* Prevents default touch behavior */
+        }
+        .emoji.dragging {
+            transform: scale(1.1);
+            opacity: 0.7;
+        }
+        /* Add Task Button */
+        .add-task-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #007bff;
+            color: #ffffff;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .add-task-btn::before {
+            content: '+';
+            font-size: 36px;
+            color: #ffffff;
+        }
+        .dark-mode .add-task-btn {
+            background-color: #0056b3;
+        }
+        /* Undo Button */
+        .undo-btn {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: #007bff; /* Changed to blue */
+            color: #ffffff;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            cursor: pointer;
+            outline: none;
+            box-shadow: 0 4px 6px rgba(0, 123, 255, 0.3);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .undo-btn::before {
+            content: '↺'; /* Unicode for reset icon */
+            font-size: 28px;
+            color: #ffffff;
+        }
+        /* Emoji Palette */
+        .emoji-palette {
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            background-color: #f0f0f0;
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+        .dark-mode .emoji-palette {
+            background-color: #222222;
+            color: #ffffff;
+            border-color: #444444;
+        }
+        .emoji-palette .category {
+            margin-bottom: 10px;
+        }
+        .emoji-palette .category-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .emoji-palette .emoji-option {
+            font-size: 28px;
+            margin: 5px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .hidden {
+            display: none;
+        }
+        /* Responsive Design */
+        @media (min-width: 600px) {
+            .planner {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (min-width: 900px) {
+            .planner {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+        /* iPhone Specific Styles */
+        @media screen and (device-width: 375px) and (device-height: 812px) {
+            /* iPhone X, XS */
+            .planner {
+                padding-bottom: 120px; /* Account for notch */
+            }
+        }
+        @media screen and (device-width: 390px) and (device-height: 844px) {
+            /* iPhone 12, 12 Pro */
+            .planner {
+                padding-bottom: 120px;
+            }
+        }
+        @media screen and (device-width: 428px) and (device-height: 926px) {
+            /* iPhone 12 Pro Max, 13 Pro Max */
+            .planner {
+                padding-bottom: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header with Clock and Sticky Button -->
+    <div class="header">
+        <!-- Clock Display -->
+        <div class="clock-display" id="clockDisplay">
+            <div class="clock-icon">🕒</div>
+            <div id="currentTime">Loading...</div>
+        </div>
+        <!-- Sticky Button -->
+        <a href="#" class="sticky-button" id="stickyButton">Plan My Day</a>
+        <!-- Theme Toggle -->
+        <button class="theme-toggle" id="themeToggle">🌓</button>
+    </div>
+
+    <!-- Planner Grid -->
+    <div class="planner" id="planner">
+        <!-- Time Slots will be generated here -->
+    </div>
+
+    <!-- Add Task Button -->
+    <button class="add-task-btn" id="addTaskBtn"></button>
+
+    <!-- Undo Button -->
+    <button class="undo-btn" id="undoBtn"></button>
+
+    <!-- Emoji Palette -->
+    <div class="emoji-palette hidden" id="emojiPalette">
+        <!-- Emojis will be populated here -->
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Clock Display
+        function updateTime() {
+            const clockDisplay = document.getElementById('currentTime');
+            const now = new Date();
+            // Convert to Amsterdam time
+            const amsterdamTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Amsterdam" }));
+            const hours = amsterdamTime.getHours().toString().padStart(2, '0');
+            const minutes = amsterdamTime.getMinutes().toString().padStart(2, '0');
+            const seconds = amsterdamTime.getSeconds().toString().padStart(2, '0');
+            clockDisplay.textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Planner Initialization
+        const planner = document.getElementById('planner');
+        const timeSlots = [
+            '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+            '13:00', '14:00', '15:00', '16:00', '17:00', '18:00',
+            '19:00', '20:00', '21:00', '22:00', '23:00', '23:59'
+        ];
+        timeSlots.forEach(time => {
+            const slot = document.createElement('div');
+            slot.className = 'time-slot';
+            slot.dataset.time = time;
+            slot.addEventListener('dragover', allowDrop);
+            slot.addEventListener('drop', drop);
+            slot.addEventListener('touchstart', touchStart, { passive: false });
+            slot.addEventListener('touchmove', touchMove, { passive: false });
+            slot.addEventListener('touchend', touchEnd, { passive: false });
+            const label = document.createElement('div');
+            label.className = 'time-label';
+            label.textContent = time;
+            slot.appendChild(label);
+            const emojiContainer = document.createElement('div');
+            emojiContainer.className = 'emoji-container';
+            slot.appendChild(emojiContainer);
+            planner.appendChild(slot);
+        });
+
+        // Emoji Palette
+        const emojiPalette = document.getElementById('emojiPalette');
+        const emojiCategories = {
+            'Smileys & Emotion': ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖','🎃'],
+            // ... (other categories remain the same)
+        };
+
+        // Flatten emojis into categories
+        for (const [category, emojis] of Object.entries(emojiCategories)) {
+            const categoryDiv = document.createElement('div');
+            categoryDiv.className = 'category';
+            const title = document.createElement('div');
+            title.className = 'category-title';
+            title.textContent = category;
+            categoryDiv.appendChild(title);
+            emojis.forEach(emoji => {
+                const emojiOption = document.createElement('div');
+                emojiOption.className = 'emoji-option';
+                emojiOption.textContent = emoji;
+                emojiOption.draggable = true;
+                emojiOption.addEventListener('dragstart', dragStartPalette);
+                emojiOption.addEventListener('touchstart', touchStartEmoji, { passive: false });
+                categoryDiv.appendChild(emojiOption);
+            });
+            emojiPalette.appendChild(categoryDiv);
+        }
+
+        // Add Task Button
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        addTaskBtn.onclick = () => {
+            emojiPalette.classList.toggle('hidden');
+        };
+
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.onclick = () => {
+            document.body.classList.toggle('dark-mode');
+        };
+
+        // Undo Functionality
+        const undoBtn = document.getElementById('undoBtn');
+        let undoStack = [];
+        undoBtn.onclick = () => {
+            if (undoStack.length > 0) {
+                const lastAction = undoStack.pop();
+                lastAction.parent.removeChild(lastAction.element);
+            }
+        };
+
+        // Drag and Drop Variables
+        let draggedElement = null;
+        let touchOffsetX = 0;
+        let touchOffsetY = 0;
+
+        // Desktop Drag and Drop Functions
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function dragStartPalette(ev) {
+            draggedElement = ev.target.cloneNode(true);
+            ev.dataTransfer.setData('text/plain', null); // For Firefox compatibility
+            setTimeout(() => {
+                ev.target.classList.add('dragging');
+            }, 0);
+        }
+
+        function dragStartPlanner(ev) {
+            draggedElement = ev.target;
+            ev.dataTransfer.setData('text/plain', null);
+            setTimeout(() => {
+                ev.target.classList.add('dragging');
+            }, 0);
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const target = ev.currentTarget.querySelector('.emoji-container');
+            if (draggedElement) {
+                const emojiElement = draggedElement.cloneNode(true);
+                emojiElement.classList.remove('dragging');
+                emojiElement.draggable = true;
+                emojiElement.addEventListener('dragstart', dragStartPlanner);
+                emojiElement.addEventListener('touchstart', touchStartEmoji, { passive: false });
+                target.appendChild(emojiElement);
+                undoStack.push({ parent: target, element: emojiElement });
+                draggedElement = null;
+            }
+            const draggingElems = document.querySelectorAll('.dragging');
+            draggingElems.forEach(elem => elem.classList.remove('dragging'));
+        }
+
+        // Touch Event Functions
+        let touchDraggedElement = null;
+
+        function touchStartEmoji(ev) {
+            ev.preventDefault();
+            const touch = ev.touches[0];
+            touchDraggedElement = ev.currentTarget.cloneNode(true);
+            touchDraggedElement.style.position = 'absolute';
+            touchDraggedElement.style.pointerEvents = 'none';
+            touchDraggedElement.style.zIndex = '1000';
+            document.body.appendChild(touchDraggedElement);
+            moveAt(touch.pageX, touch.pageY);
+            function moveAt(pageX, pageY) {
+                touchDraggedElement.style.left = pageX - touchDraggedElement.offsetWidth / 2 + 'px';
+                touchDraggedElement.style.top = pageY - touchDraggedElement.offsetHeight / 2 + 'px';
+            }
+            function onTouchMove(ev) {
+                const touch = ev.touches[0];
+                moveAt(touch.pageX, touch.pageY);
+                const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (elem && elem.classList.contains('time-slot')) {
+                    elem.classList.add('drop-target');
+                }
+            }
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            touchDraggedElement.addEventListener('touchend', function(ev) {
+                document.removeEventListener('touchmove', onTouchMove);
+                touchDraggedElement.parentNode.removeChild(touchDraggedElement);
+                const touch = ev.changedTouches[0];
+                const elem = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (elem && (elem.classList.contains('time-slot') || elem.classList.contains('emoji-container'))) {
+                    const targetSlot = elem.closest('.time-slot');
+                    if (targetSlot) {
+                        const targetContainer = targetSlot.querySelector('.emoji-container');
+                        const emojiElement = ev.currentTarget.cloneNode(true);
+                        emojiElement.draggable = true;
+                        emojiElement.addEventListener('dragstart', dragStartPlanner);
+                        emojiElement.addEventListener('touchstart', touchStartEmoji, { passive: false });
+                        targetContainer.appendChild(emojiElement);
+                        undoStack.push({ parent: targetContainer, element: emojiElement });
+                    }
+                }
+                const dropTargets = document.querySelectorAll('.drop-target');
+                dropTargets.forEach(elem => elem.classList.remove('drop-target'));
+            }, { once: true });
+        }
+
+        // Touch Events for Time Slots
+        function touchStart(ev) {
+            // Prevent default to avoid conflicts
+            ev.preventDefault();
+        }
+
+        function touchMove(ev) {
+            // Prevent default to avoid conflicts
+            ev.preventDefault();
+        }
+
+        function touchEnd(ev) {
+            // Prevent default to avoid conflicts
+            ev.preventDefault();
+        }
+
+        // Hide Emoji Palette on Outside Click
+        document.addEventListener('click', function(event) {
+            if (!emojiPalette.contains(event.target) && !addTaskBtn.contains(event.target)) {
+                emojiPalette.classList.add('hidden');
+            }
+        });
+
+        // Edge Scrolling during Dragging
+        let isDragging = false;
+        let scrollInterval;
+
+        document.addEventListener('dragstart', () => {
+            isDragging = true;
+        });
+
+        document.addEventListener('dragend', () => {
+            isDragging = false;
+            clearInterval(scrollInterval);
+        });
+
+        planner.addEventListener('dragover', (ev) => {
+            ev.preventDefault();
+            const plannerRect = planner.getBoundingClientRect();
+            const scrollThreshold = 50; // Pixels from edge to start scrolling
+            const scrollSpeed = 5; // Pixels per interval
+
+            if (isDragging) {
+                if (ev.clientY < plannerRect.top + scrollThreshold) {
+                    clearInterval(scrollInterval);
+                    scrollInterval = setInterval(() => {
+                        planner.scrollTop -= scrollSpeed;
+                    }, 20);
+                } else if (ev.clientY > plannerRect.bottom - scrollThreshold) {
+                    clearInterval(scrollInterval);
+                    scrollInterval = setInterval(() => {
+                        planner.scrollTop += scrollSpeed;
+                    }, 20);
+                } else {
+                    clearInterval(scrollInterval);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
